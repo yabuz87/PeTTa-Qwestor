@@ -44,17 +44,11 @@
      )
 )
 
-
-; ─────────────────────────────────────────────
-; mainLoop
-; FIX QUALITY-7 / STRUCT-4:
-;   calculate-mod now receives $space explicitly.
-; ─────────────────────────────────────────────
 (= (mainLoop $space $query)
     (let* (
             ($context       (py-call (context.wrap_parser $query)))
             ($_ (addContexts $space $context))
-            ($calculated-mods (calculate-mod $space))    ; ← $space passed explicitly
+            ($calculated-mods (calculate-mod $space))    
             ($_ (update-mods $space $calculated-mods))
           )
         $calculated-mods
@@ -64,9 +58,6 @@
 
 ; ─────────────────────────────────────────────
 ; Entry point
-; FIX STRUCT-4: top-level side-effect calls
-;   have been moved here and clearly labelled.
-;   Comment these out when importing as a library.
 ; ─────────────────────────────────────────────
 !(setUpSpace &space)
 !(mainLoop &space "Can you verify if the quantum computing breakthrough is real? I need detailed analysis comparing expert opinions.")
