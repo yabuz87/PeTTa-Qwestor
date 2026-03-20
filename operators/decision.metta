@@ -245,3 +245,294 @@
       (updateGoals $space $goalList)
     )
 )
+
+
+(= (decision-action (action $a)) $a)
+(= (decision-action $a) $a)
+
+
+(= (goalTargets $space $decision)
+    (let*
+        (
+            ; ── context signals ──────────────────────────────
+            ($cx              (getContext $space complexity))
+            ($urgent_bool     (getContext $space urgent))
+            ($ambiguity       (getContext $space ambiguity))
+            ($threshold       (getContext $space threshold))
+            ($failure_signal  (getContext $space failure_signal))
+            ($expertise       (getContext $space expertise))
+            ($topic_fam       (getContext $space topic_familiarity))
+            ($reflective_int  (getContext $space reflective_intent))
+
+            ; ── decision action ─────────────────────────────
+            ($action          (decision-action $decision))
+
+            ; ── base targets ────────────────────────────────
+            ($base_efficiency (+ 0.45
+                                 (+ (if (== $urgent_bool True) 0.35 0.0)
+                                    (* 0.20 (- 1.0 $cx)))))
+
+            ($base_accuracy   (+ 0.45
+                                 (+ (* 0.45 $cx)
+                                    (+ (* 0.10 $ambiguity)
+                                       (if (== $urgent_bool True) 0.0 0.05)))))
+
+            ($base_success_moderate
+                (+ 0.45
+                   (+ (* 0.30 $cx)
+                      (+ (* 0.25 $ambiguity)
+                         (+ (* 0.25 $threshold)
+                            (+ (* 0.20 $failure_signal)
+                               (if (== $urgent_bool True) -0.08 0.0)))))))
+
+            ($base_knowledge (+ 0.35
+                                (+ (* 0.50 $cx)
+                                   (+ (* 0.20 $ambiguity)
+                                      (* 0.10 $expertise)))))
+
+            ($base_novelty (+ 0.30
+                              (+ (* 0.35 $cx)
+                                 (+ (* 0.25 (- 1.0 $topic_fam))
+                                    (+ (* 0.20 $reflective_int)
+                                       (+ (* 0.10 $ambiguity)
+                                          (if (== $urgent_bool True) -0.05 0.0)))))))
+
+            ($base_success_breakthrough
+                (+ 0.30
+                   (+ (* 0.45 $cx)
+                      (+ (* 0.25 $ambiguity)
+                         (+ (* 0.20 $reflective_int)
+                            (if (== $urgent_bool True) -0.08 0.0))))))
+
+            ($base_coherence
+                (+ 0.45
+                   (+ (* 0.25 (- 1.0 $ambiguity))
+                      (+ (* 0.25 (- 1.0 $failure_signal))
+                         (+ (* 0.20 $threshold)
+                            (if (== $urgent_bool True) 0.0 0.10))))))
+
+            ($base_originality
+                (+ 0.30
+                   (+ (* 0.40 $cx)
+                      (+ (* 0.25 $reflective_int)
+                         (+ (* 0.20 (- 1.0 $topic_fam))
+                            (+ (* 0.10 $ambiguity)
+                               (if (== $urgent_bool True) -0.08 0.0)))))))
+
+            ($base_social
+                (+ 0.35
+                   (+ (* 0.30 $ambiguity)
+                      (+ (* 0.20 $failure_signal)
+                         (+ (* 0.20 (- 1.0 $expertise))
+                            (if (== $urgent_bool True) 0.10 0.0))))))
+
+            ($base_help_short
+                (+ 0.35
+                   (+ (* 0.35 (- 1.0 $cx))
+                      (+ (* 0.20 (- 1.0 $ambiguity))
+                         (if (== $urgent_bool True) 0.10 0.0)))))
+
+            ($base_help_long (+ 0.30
+                                (+ (* 0.55 $cx)
+                                   (* 0.15 (- 1.0 $ambiguity)))))
+
+            ($base_over_beneficial
+                (+ 0.45
+                   (+ (* 0.35 $threshold)
+                      (* 0.20 $failure_signal))))
+
+            ($base_over_safety (+ 0.45
+                                  (* 0.40 $threshold)))
+
+            ($base_over_honesty
+                (+ 0.45
+                   (+ (* 0.35 $ambiguity)
+                      (* 0.20 $failure_signal))))
+
+            ; ── action-adjusted targets (case style) ────────
+            ($targets
+              (case $action (
+                (act_search
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             (+ $base_accuracy 0.05))
+                    (success_moderate     (+ $base_success_moderate 0.01))
+                    (knowledge            (+ $base_knowledge 0.06))
+                    (novelty              (+ $base_novelty 0.06))
+                    (success_breakthrough (+ $base_success_breakthrough 0.04))
+                    (coherence            (+ $base_coherence 0.01))
+                    (originality          (+ $base_originality 0.03))
+                    (social               (+ $base_social 0.01))
+                    (help_short           (+ $base_help_short -0.02))
+                    (help_long            $base_help_long)
+                    (over_beneficial      $base_over_beneficial)
+                    (over_safety          $base_over_safety)
+                    (over_honesty         $base_over_honesty)
+                  ))
+
+                (act_verify
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             (+ $base_accuracy 0.06))
+                    (success_moderate     (+ $base_success_moderate 0.06))
+                    (knowledge            (+ $base_knowledge 0.03))
+                    (novelty              (+ $base_novelty -0.04))
+                    (success_breakthrough (+ $base_success_breakthrough 0.01))
+                    (coherence            (+ $base_coherence 0.06))
+                    (originality          (+ $base_originality -0.03))
+                    (social               (+ $base_social 0.07))
+                    (help_short           (+ $base_help_short -0.03))
+                    (help_long            (+ $base_help_long 0.02))
+                    (over_beneficial      (+ $base_over_beneficial 0.05))
+                    (over_safety          (+ $base_over_safety 0.05))
+                    (over_honesty         (+ $base_over_honesty 0.06))
+                  ))
+
+                (act_think
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             (+ $base_accuracy 0.04))
+                    (success_moderate     (+ $base_success_moderate -0.02))
+                    (knowledge            (+ $base_knowledge 0.05))
+                    (novelty              (+ $base_novelty 0.08))
+                    (success_breakthrough (+ $base_success_breakthrough 0.06))
+                    (coherence            (+ $base_coherence 0.02))
+                    (originality          (+ $base_originality 0.07))
+                    (social               (+ $base_social 0.01))
+                    (help_short           (+ $base_help_short -0.02))
+                    (help_long            (+ $base_help_long 0.04))
+                    (over_beneficial      (+ $base_over_beneficial 0.03))
+                    (over_safety          $base_over_safety)
+                    (over_honesty         (+ $base_over_honesty 0.04))
+                  ))
+
+                (act_respond
+                  (goal-vector
+                    (efficiency           (+ $base_efficiency 0.05))
+                    (accuracy             $base_accuracy)
+                    (success_moderate     (+ $base_success_moderate 0.02))
+                    (knowledge            (+ $base_knowledge -0.04))
+                    (novelty              (+ $base_novelty -0.04))
+                    (success_breakthrough (+ $base_success_breakthrough -0.04))
+                    (coherence            (+ $base_coherence 0.02))
+                    (originality          (+ $base_originality -0.04))
+                    (social               (+ $base_social 0.06))
+                    (help_short           (+ $base_help_short 0.08))
+                    (help_long            (+ $base_help_long -0.02))
+                    (over_beneficial      $base_over_beneficial)
+                    (over_safety          (+ $base_over_safety -0.02))
+                    (over_honesty         $base_over_honesty)
+                  ))
+
+                (act_clarify
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             (+ $base_accuracy 0.03))
+                    (success_moderate     (+ $base_success_moderate 0.03))
+                    (knowledge            (+ $base_knowledge 0.01))
+                    (novelty              (+ $base_novelty -0.01))
+                    (success_breakthrough $base_success_breakthrough)
+                    (coherence            (+ $base_coherence 0.05))
+                    (originality          (+ $base_originality -0.02))
+                    (social               (+ $base_social 0.08))
+                    (help_short           (+ $base_help_short 0.03))
+                    (help_long            $base_help_long)
+                    (over_beneficial      (+ $base_over_beneficial 0.03))
+                    (over_safety          $base_over_safety)
+                    (over_honesty         (+ $base_over_honesty 0.04))
+                  ))
+
+                (act_decompose
+                  (goal-vector
+                    (efficiency           (+ $base_efficiency 0.01))
+                    (accuracy             (+ $base_accuracy 0.04))
+                    (success_moderate     (+ $base_success_moderate 0.04))
+                    (knowledge            (+ $base_knowledge 0.07))
+                    (novelty              (+ $base_novelty 0.05))
+                    (success_breakthrough (+ $base_success_breakthrough 0.08))
+                    (coherence            (+ $base_coherence 0.04))
+                    (originality          (+ $base_originality 0.05))
+                    (social               (+ $base_social 0.04))
+                    (help_short           (+ $base_help_short -0.04))
+                    (help_long            (+ $base_help_long 0.06))
+                    (over_beneficial      (+ $base_over_beneficial 0.02))
+                    (over_safety          $base_over_safety)
+                    (over_honesty         $base_over_honesty)
+                  ))
+
+                (act_synthesize
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             (+ $base_accuracy 0.05))
+                    (success_moderate     (+ $base_success_moderate 0.05))
+                    (knowledge            (+ $base_knowledge 0.08))
+                    (novelty              (+ $base_novelty 0.04))
+                    (success_breakthrough (+ $base_success_breakthrough 0.05))
+                    (coherence            (+ $base_coherence 0.05))
+                    (originality          (+ $base_originality 0.08))
+                    (social               (+ $base_social 0.05))
+                    (help_short           (+ $base_help_short -0.03))
+                    (help_long            (+ $base_help_long 0.07))
+                    (over_beneficial      (+ $base_over_beneficial 0.03))
+                    (over_safety          (+ $base_over_safety 0.03))
+                    (over_honesty         (+ $base_over_honesty 0.04))
+                  ))
+
+                ($_
+                  (goal-vector
+                    (efficiency           $base_efficiency)
+                    (accuracy             $base_accuracy)
+                    (success_moderate     $base_success_moderate)
+                    (knowledge            $base_knowledge)
+                    (novelty              $base_novelty)
+                    (success_breakthrough $base_success_breakthrough)
+                    (coherence            $base_coherence)
+                    (originality          $base_originality)
+                    (social               $base_social)
+                    (help_short           $base_help_short)
+                    (help_long            $base_help_long)
+                    (over_beneficial      $base_over_beneficial)
+                    (over_safety          $base_over_safety)
+                    (over_honesty         $base_over_honesty)
+                  ))
+              ))
+            )
+        )
+
+        (let 
+          (goal-vector
+            (efficiency           $t_eff)
+            (accuracy             $t_acc)
+            (success_moderate     $t_smod)
+            (knowledge            $t_kn)
+            (novelty              $t_nov)
+            (success_breakthrough $t_sbr)
+            (coherence            $t_coh)
+            (originality          $t_ori)
+            (social               $t_soc)
+            (help_short           $t_hs)
+            (help_long            $t_hl)
+            (over_beneficial      $t_ben)
+            (over_safety          $t_safe)
+            (over_honesty         $t_hon)
+          )
+          $targets
+          (goal-vector
+            (efficiency           (_clamp01 $t_eff))
+            (accuracy             (_clamp01 $t_acc))
+            (success_moderate     (_clamp01 $t_smod))
+            (knowledge            (_clamp01 $t_kn))
+            (novelty              (_clamp01 $t_nov))
+            (success_breakthrough (_clamp01 $t_sbr))
+            (coherence            (_clamp01 $t_coh))
+            (originality          (_clamp01 $t_ori))
+            (social               (_clamp01 $t_soc))
+            (help_short           (_clamp01 $t_hs))
+            (help_long            (_clamp01 $t_hl))
+            (over_beneficial      (_clamp01 $t_ben))
+            (over_safety          (_clamp01 $t_safe))
+            (over_honesty         (_clamp01 $t_hon))
+          )
+        )
+    )
+)
