@@ -29,30 +29,8 @@
     (add-atom $space $state)
 )
 
-
-(= (get-mod $space $modulator-name) 
-(let* 
-   (
-    ($goal-val (match $space (state $x $y) (cdr-atom $y)))
-    ($val 
-    (case $modulator-name
-        (
-        (Activation (index-atom $goal-val 0))
-        (Resolution (index-atom $goal-val 1))
-        (SecuringThreshold (index-atom $goal-val 2))
-        (SelectionThreshold (index-atom $goal-val 3))
-                    
-        )
-   )))
-   $val
-   
-))
-(= (fetch-modulators $space)(match $space (state $x $y) $y))
-(= (fetch-state $space) (match $space (state $x $y) (state $x $y)))
-(= (fetch-goals $space)(match $space (state $x $y) $x))
-
 (= (remove-state $space)
- (let $state (fetch-state $space) (remove-atom $space $state))
+ (let $state (match $space (state $x $y $z) (state $x $y $z)) (remove-atom $space $state))
 )
 
 (= (replaceByIndex $expr $index $new)

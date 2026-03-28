@@ -330,7 +330,6 @@
         (m_valence           0.00)
 ))
 
-
 ; ─────────────────────────────────────────────
 ; Default context values
 ; ─────────────────────────────────────────────
@@ -373,4 +372,14 @@
  (over_beneficial      0.60)
  (over_safety          0.65)
  (over_honesty         0.65)
+))
+
+; ─────────────────────────────────────────────
+; Default anti-goal vector
+; ─────────────────────────────────────────────
+(= (default-anti-goals)(anti-goals
+    (hallucinate 0.35)
+    (redundant   0.30)
+    (rabbit_hole 0.28)
+    (premature   0.30)
 ))
